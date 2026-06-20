@@ -55,13 +55,13 @@ function App() {
     let active = true
     let subscription
 
-    const applySession = async (currentSession) => {
+    const applySession = (currentSession) => {
       if (!active) return
       setSession(currentSession)
       setAuthReady(true)
 
       if (currentSession?.provider_token) {
-        await fetch(`${API_URL}/calendar/credentials`, {
+        void fetch(`${API_URL}/calendar/credentials`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -71,16 +71,17 @@ function App() {
             access_token: currentSession.provider_token,
             refresh_token: currentSession.provider_refresh_token || null,
           }),
-        })
+        }).catch(() => {})
       }
     }
 
     const initializeAuth = async () => {
       const { data: { session: initialSession } } = await supabase.auth.getSession()
-      await applySession(initialSession)
+      applySession(initialSession)
       if (!active) return
 
-      const { data } = supabase.auth.onAuthStateChange((_event, currentSession) => {
+      const { data } = supabase.auth.onAuthStateChange((event, currentSession) => {
+        if (event === 'INITIAL_SESSION') return
         void applySession(currentSession)
       })
       subscription = data.subscription
