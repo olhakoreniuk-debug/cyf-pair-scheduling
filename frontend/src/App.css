@@ -58,6 +58,11 @@ button { cursor: pointer; }
 .slot-chip strong, .slot-chip span { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .slot-chip strong { font-size: 12px; }
 .slot-chip span { margin-top: 2px; color: #40534a; font-size: 11px; }
+.volunteer-slot { cursor: default; }
+.volunteer-slot.pending { border-left-color: #b78b10; background: #fff3c9; }
+.volunteer-slot.booked { border-left-color: #27689f; background: #e4eef7; }
+.volunteer-slot.pending:hover { background: #fff3c9; }
+.volunteer-slot.booked:hover { background: #e4eef7; }
 .more-slots { padding: 3px 5px; border: 0; color: var(--green); background: none; font-size: 11px; font-weight: 800; text-align: left; }
 .calendar-state, .error-message { padding: 72px 24px; border: 1px solid var(--line); border-radius: 0 0 16px 16px; color: var(--muted); background: var(--paper); text-align: center; }
 .error-message { color: #8b302b; background: #fff0ec; }
@@ -86,6 +91,7 @@ button { cursor: pointer; }
 .dashboard-error { color: #8b302b; border-color: #efc5bd; background: #fff0ec; }
 .volunteer-intro { align-items: center; }
 .sync-button { flex: 0 0 auto; }
+.volunteer-calendar { padding-bottom: 44px; }
 .requests-section, .my-sessions { max-width: 1360px; margin: 0 auto; padding: 0 28px 72px; }
 .section-title { display: flex; align-items: center; gap: 10px; margin-bottom: 18px; }
 .section-title h2 { margin: 0; font-family: Georgia, serif; font-size: 28px; font-weight: 500; }

@@ -4,6 +4,11 @@ import './App.css'
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000'
 const WEEKDAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+const SLOT_STATUS_LABELS = {
+  available: 'Available',
+  pending: 'Awaiting decision',
+  booked: 'Booked',
+}
 
 function startOfWeek(date) {
   const result = new Date(date)
@@ -125,7 +130,10 @@ function App() {
         ])
         setAdminUsers(userData)
         setAdminSlots(slotData)
-      } else if (currentProfile.role !== 'volunteer') {
+      } else if (currentProfile.role === 'volunteer') {
+        const slotData = await api('/my-slots')
+        setSlots(slotData.sort((a, b) => new Date(a.start_time) - new Date(b.start_time)))
+      } else {
         const slotResponse = await fetch(`${API_URL}/slots`)
         if (!slotResponse.ok) throw new Error('Could not load the calendar.')
         const slotData = await slotResponse.json()
@@ -370,6 +378,7 @@ function App() {
             setMessage('')
             try {
               const result = await api('/sync', { method: 'POST' })
+              await loadDashboard()
               setMessage(`${result.synced_slots} CYF slots synced.`)
             } catch {
               setMessage('Calendar sync failed.')
@@ -378,6 +387,45 @@ function App() {
         </section>
         {message && <div className="toast" role="status">{message}</div>}
         {error && <div className="dashboard-error" role="alert">{error}</div>}
+        <section className="calendar-section volunteer-calendar" aria-label="Your CYF sessions calendar">
+          <div className="calendar-toolbar">
+            <button className="today-button" onClick={() => setViewDate(new Date())}>Today</button>
+            <div className="month-nav">
+              <button className="period-button" aria-label="Previous period" onClick={() => changePeriod(-1)}>←</button>
+              <h2>{title}</h2>
+              <button className="period-button" aria-label="Next period" onClick={() => changePeriod(1)}>→</button>
+            </div>
+            <div className="view-switch" aria-label="Calendar view">
+              <button className={view === 'month' ? 'active' : ''} onClick={() => setView('month')}>Month</button>
+              <button className={view === 'week' ? 'active' : ''} onClick={() => setView('week')}>Week</button>
+            </div>
+          </div>
+
+          {loading ? <div className="calendar-state">Loading your sessions…</div> : (
+            <div className={`calendar-grid ${view}`}>
+              {WEEKDAYS.map((weekday) => <div className="weekday" key={weekday}>{weekday}</div>)}
+              {days.map((day) => {
+                const daySlots = slotsByDate[dateKey(day)] || []
+                const outsideMonth = view === 'month' && day.getMonth() !== viewDate.getMonth()
+                const isToday = dateKey(day) === dateKey(new Date())
+                return (
+                  <div className={`day-cell ${outsideMonth ? 'outside' : ''}`} key={dateKey(day)}>
+                    <time className={isToday ? 'today' : ''} dateTime={dateKey(day)}>{day.getDate()}</time>
+                    <div className="day-slots">
+                      {daySlots.slice(0, 3).map((slot) => (
+                        <article className={`slot-chip volunteer-slot ${slot.status}`} key={slot.id}>
+                          <strong>{new Date(slot.start_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</strong>
+                          <span>{SLOT_STATUS_LABELS[slot.status] || slot.status}</span>
+                        </article>
+                      ))}
+                      {daySlots.length > 3 && <span className="more-slots">+{daySlots.length - 3} more</span>}
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </section>
         <section className="requests-section">
           <div className="section-title"><h2>Waiting for your decision</h2><span>{pending.length}</span></div>
           {loading ? <p className="empty-state">Loading requests…</p> : pending.length === 0 ? (

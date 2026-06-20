@@ -147,6 +147,26 @@ def get_slots():
     return response.data
 
 
+@app.get("/my-slots")
+def get_my_slots(
+    authorization: Annotated[str | None, Header()] = None,
+):
+    profile = current_profile(authorization)
+    if profile["role"] != "volunteer":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only volunteers can view their calendar"
+        )
+
+    response = supabase.table("slots")\
+        .select("*")\
+        .eq("volunteer_id", profile["id"])\
+        .in_("status", ["available", "pending", "booked"])\
+        .order("start_time")\
+        .execute()
+    return response.data
+
+
 @app.post("/calendar/credentials", status_code=status.HTTP_204_NO_CONTENT)
 def save_google_credentials(
     payload: GoogleCredentials,
