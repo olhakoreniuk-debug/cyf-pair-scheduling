@@ -35,6 +35,7 @@ function calendarDays(viewDate, view) {
 
 function App() {
   const [session, setSession] = useState(null)
+  const [authReady, setAuthReady] = useState(false)
   const [profile, setProfile] = useState(null)
   const [slots, setSlots] = useState([])
   const [bookings, setBookings] = useState([])
@@ -51,31 +52,46 @@ function App() {
   const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session: currentSession } }) => {
+    let active = true
+    let subscription
+
+    const applySession = async (currentSession) => {
+      if (!active) return
       setSession(currentSession)
-    })
+      setAuthReady(true)
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (_event, currentSession) => {
-        setSession(currentSession)
+      if (currentSession?.provider_token) {
+        await fetch(`${API_URL}/calendar/credentials`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${currentSession.access_token}`,
+          },
+          body: JSON.stringify({
+            access_token: currentSession.provider_token,
+            refresh_token: currentSession.provider_refresh_token || null,
+          }),
+        })
+      }
+    }
 
-        if (currentSession?.provider_token) {
-          await fetch(`${API_URL}/calendar/credentials`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              Authorization: `Bearer ${currentSession.access_token}`,
-            },
-            body: JSON.stringify({
-              access_token: currentSession.provider_token,
-              refresh_token: currentSession.provider_refresh_token || null,
-            }),
-          })
-        }
-      },
-    )
+    const initializeAuth = async () => {
+      const { data: { session: initialSession } } = await supabase.auth.getSession()
+      await applySession(initialSession)
+      if (!active) return
 
-    return () => subscription.unsubscribe()
+      const { data } = supabase.auth.onAuthStateChange((_event, currentSession) => {
+        void applySession(currentSession)
+      })
+      subscription = data.subscription
+    }
+
+    void initializeAuth()
+
+    return () => {
+      active = false
+      subscription?.unsubscribe()
+    }
   }, [])
 
   const api = async (path, options = {}) => {
@@ -232,6 +248,10 @@ function App() {
     } catch (adminError) {
       setMessage(adminError.message)
     }
+  }
+
+  if (!authReady) {
+    return <main className="login-page" aria-label="Checking your session" />
   }
 
   if (!session) {
